@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tank Dimension Calculator (Brython)</title>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.11.0/brython.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/brython@3.11.0/brython_stdlib.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 600px; margin: auto; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; }
+    button { font-size: 16px; }
+    pre { background: #f0f0f0; padding: 10px; margin-top: 10px; white-space: pre-wrap; }
+  </style>
+</head>
+<body onload="brython()">
+
+<h2>Tank Dimension Calculator (L/D Ratio)</h2>
+
+<label>Operating Volume (m³):</label>
+<input type="number" id="volume" step="any" />
+
+<label>Min L/D Ratio (default 1.25):</label>
+<input type="number" id="min_ratio" step="any" placeholder="1.25" />
+
+<label>Max L/D Ratio (default 2.0):</label>
+<input type="number" id="max_ratio" step="any" placeholder="2.0" />
+
+<label>Margin (%) [optional]:</label>
+<input type="number" id="margin" step="any" placeholder="e.g. 10" />
+
+<button id="calc-btn">Calculate</button>
+
+<pre id="output">Results will appear here...</pre>
+
+<script type="text/python">
+from browser import document, html
+import math
+
+def calculate_dimensions(volume, min_ratio=1.25, max_ratio=2.0):
+    results = []
+    for ratio in (min_ratio, max_ratio):
+        diameter = ((4 * volume) / (math.pi * ratio)) ** (1 / 3)
+        height = ratio * diameter
+        results.append({
+            "L/D Ratio": ratio,
+            "Diameter (m)": diameter,
+            "Height (m)": height
+        })
+    return results
+
+def format_results(volume, results, label="", margin_percent=None):
+    output = ""
+    if margin_percent is not None:
+        output += f"\n{label}Volume: {volume:.3f} m³ ({margin_percent:.0f}% margin added)\n"
+    else:
+        output += f"\n{label}Volume: {volume:.3f} m³\n"
+    output += f"{'L/D Ratio':<12}{'Diameter (m)':<15}{'Height (m)':<15}\n"
+    for s in results:
+        output += f"{s['L/D Ratio']:<12.2f}{s['Diameter (m)']:<15.3f}{s['Height (m)']:<15.3f}\n"
+    return output
+
+def calculate(event):
+    output = document["output"]
+    output.text = "Calculating..."
+    try:
+        volume = float(document["volume"].value)
+        min_ratio = float(document["min_ratio"].value or 1.25)
+        max_ratio = float(document["max_ratio"].value or 2.0)
+        margin_input = document["margin"].value.strip()
+        margin_percent = float(margin_input) if margin_input else None
+
+        # Operating volume
+        result_text = format_results(volume, calculate_dimensions(volume, min_ratio, max_ratio), label="Operating ")
+
+        # Gross volume (if margin given)
+        if margin_percent is not None:
+            gross_volume = volume * (1 + margin_percent / 100)
+            result_text += format_results(gross_volume, calculate_dimensions(gross_volume, min_ratio, max_ratio), label="Gross ", margin_percent=margin_percent)
+
+        output.text = result_text
+    except Exception as e:
+        output.text = f"Error: {e}"
+
+document["calc-btn"].bind("click", calculate)
+</script>
+
+</body>
+</html>
